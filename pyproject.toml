@@ -16,3 +16,20 @@ dependencies = [
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.12.8"
+pytest = "^8.4.1"
+pytest-django = "^4.11.1"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "B", "UP"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "single"
+
