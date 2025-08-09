@@ -23,7 +23,7 @@ pytest = "^8.4.1"
 pytest-django = "^4.11.1"
 
 [tool.ruff]
-line-length = 88
+line-length = 92
 target-version = "py310"
 
 [tool.ruff.lint]
