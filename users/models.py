@@ -66,6 +66,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         'Email',
         blank=True,
         null=True,
+        unique=True,
         help_text='Email opcional, usado principalmente por administradores',
     )
 
@@ -79,6 +80,21 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices=Role.choices,
         default=Role.COOPERATED,
         help_text='Papel do usuário no sistema',
+    )
+
+    groups = models.ManyToManyField(
+        'auth.Group',
+        related_name='users_users',
+        blank=True,
+        help_text='The groups this user belongs to.',
+        verbose_name='groups',
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        related_name='users_users_permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        verbose_name='user permissions',
     )
 
     # Campos de controle
@@ -114,6 +130,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # Configurações do Django
     objects = UserManager()
+    all_objects = models.Manager()
 
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['full_name']
@@ -160,6 +177,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_cooperated(self):
         """Verifica se é cooperado."""
         return self.role == self.Role.COOPERATED
+
+    def deactivate(self):
+        """Desativa o usuário."""
+        self.is_active = False
+        self.save(update_fields=['is_active', 'updated_at'])
+
+    def activate(self):
+        """Ativa o usuário."""
+        self.is_active = True
+        self.save(update_fields=['is_active', 'updated_at'])
 
     def get_full_name(self):
         """Retorna o nome completo."""
