@@ -8,39 +8,66 @@ from django.utils import timezone
 class UserManager(BaseUserManager):
     """
     Custom user manager para o modelo User do CoopApp.
-    Gerencia criação de usuários comuns e superusuários.
+    Gerencia criação de usuários comuns, administradores e superusuários.
     """
 
     def create_user(self, username, password=None, **extra_fields):
-        """Cria e salva um usuário comum."""
+        """Cria e salva um usuário comum (cooperado por padrão)."""
         if not username:
             raise ValueError('O campo username é obrigatório')
-        # Define valores padrão
+
         extra_fields.setdefault('is_active', True)
         extra_fields.setdefault('role', User.Role.COOPERATED)
+
+        # Validação condicional para administradores
+        if extra_fields.get('role') == User.Role.ADMIN:
+            if not extra_fields.get('email'):
+                raise ValueError('Email é obrigatório para administradores')
+            if not extra_fields.get('full_name'):
+                raise ValueError('Nome completo é obrigatório')
+
         user = self.model(username=username, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, username, password=None, **extra_fields):
-        """Cria e salva um superusuário (admin)."""
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_active', True)
-        extra_fields.setdefault('role', User.Role.ADMIN)
+    def create_admin_user(self, username, email, full_name, password=None, **extra_fields):
+        """Cria e salva um usuário administrador (não superusuário)."""
+        extra_fields.update({
+            'role': User.Role.ADMIN,
+            'email': email,
+            'full_name': full_name,
+            'is_staff': False,  # Administradores não acessam o admin
+            'is_superuser': False  # Não é superusuário
+        })
+        return self.create_user(username, password, **extra_fields)
 
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser deve ter is_staff=True')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser deve ter is_superuser=True')
+    def create_superuser(self, username, password=None, **extra_fields):
+        """Cria e salva um superusuário (admin com todos os privilégios)."""
+        # Pega dados interativamente se não fornecidos
+        if 'email' not in extra_fields:
+            extra_fields['email'] = input("Email (obrigatório para admin): ")
+        if 'full_name' not in extra_fields:
+            extra_fields['full_name'] = input("Nome completo: ")
+
+        extra_fields.update({
+            'role': User.Role.ADMIN,
+            'is_staff': True,
+            'is_superuser': True,
+            'is_active': True
+        })
+
+        # Validações reforçadas
+        if not extra_fields['email']:
+            raise ValueError('Superuser deve ter um email')
+        if not extra_fields['full_name']:
+            raise ValueError('Superuser deve ter um nome completo')
 
         return self.create_user(username, password, **extra_fields)
 
     def get_queryset(self):
         """Retorna apenas usuários ativos por padrão."""
         return super().get_queryset().filter(is_active=True)
-
 
 class User(AbstractBaseUser, PermissionsMixin):
     """
@@ -53,6 +80,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         COOPERATED = 'COOPERATED', 'Cooperado'
 
     # Campos principais
+    id = models.BigAutoField(
+        primary_key=True,
+        editable=False,
+        verbose_name='ID'
+    )
+
     username = models.CharField(
         'Nome de usuário',
         max_length=150,
