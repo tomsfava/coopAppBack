@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'catalog',
     'operations',
     'transactions',
-
 ]
 
 AUTH_USER_MODEL = 'users.User'

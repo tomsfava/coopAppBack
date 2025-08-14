@@ -11,80 +11,99 @@ class UserManager(BaseUserManager):
     Gerencia criação de usuários comuns, administradores e superusuários.
     """
 
-    def create_user(self, username, password=None, **extra_fields):
+    def create_user(self, username, password=None, is_superuser=False, **extra_fields):
         """Cria e salva um usuário comum (cooperado por padrão)."""
+        extra_fields['is_superuser'] = is_superuser
+
         if not username:
             raise ValueError('O campo username é obrigatório')
 
-        extra_fields.setdefault('is_active', True)
-        extra_fields.setdefault('role', User.Role.COOPERATED)
-
-        # Validação condicional para administradores
-        if extra_fields.get('role') == User.Role.ADMIN:
-            if not extra_fields.get('email'):
-                raise ValueError('Email é obrigatório para administradores')
+        # Nome completo obrigatório (menos para superuser)
+        if not is_superuser:
             if not extra_fields.get('full_name'):
                 raise ValueError('Nome completo é obrigatório')
 
+        extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault('is_cooperated', True)
+        extra_fields.setdefault('is_admin', False)
+        extra_fields.setdefault('is_staff', False)
+
+        # Validação condicional para administradores
+        if extra_fields.get('is_admin'):
+            if not extra_fields.get('email'):
+                user_type = 'superusuários' if is_superuser else 'administradores'
+                raise ValueError(f'Email é obrigatório para {user_type}')
+
         user = self.model(username=username, **extra_fields)
         user.set_password(password)
+
+        if not is_superuser:
+            user.full_clean()
+
         user.save(using=self._db)
         return user
 
     def create_admin_user(self, username, email, full_name, password=None, **extra_fields):
         """Cria e salva um usuário administrador (não superusuário)."""
-        extra_fields.update({
-            'role': User.Role.ADMIN,
-            'email': email,
-            'full_name': full_name,
-            'is_staff': False,  # Administradores não acessam o admin
-            'is_superuser': False  # Não é superusuário
-        })
+        extra_fields.update(
+            {
+                'is_admin': True,
+                'is_cooperated': True,
+                'email': email,
+                'full_name': full_name,
+                'is_staff': False,  # Administradores não acessam o admin
+                'is_superuser': False,  # Não é superusuário
+            }
+        )
         return self.create_user(username, password, **extra_fields)
 
-    def create_superuser(self, username, password=None, **extra_fields):
-        """Cria e salva um superusuário (admin com todos os privilégios)."""
-        # Pega dados interativamente se não fornecidos
-        if 'email' not in extra_fields:
-            extra_fields['email'] = input("Email (obrigatório para admin): ")
-        if 'full_name' not in extra_fields:
-            extra_fields['full_name'] = input("Nome completo: ")
+    def create_superuser(self, username, email, password=None, **extra_fields):
+        """Cria e salva um superusuário."""
 
-        extra_fields.update({
-            'role': User.Role.ADMIN,
-            'is_staff': True,
-            'is_superuser': True,
-            'is_active': True
-        })
-
-        # Validações reforçadas
-        if not extra_fields['email']:
+        # Validações obrigatórias
+        if not email:
             raise ValueError('Superuser deve ter um email')
-        if not extra_fields['full_name']:
-            raise ValueError('Superuser deve ter um nome completo')
+
+        # Configurações obrigatórias para superuser
+        extra_fields.setdefault('is_admin', True)
+        extra_fields.setdefault('is_cooperated', False)
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        # Validações do Django
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser deve ter is_staff=True')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser deve ter is_superuser=True')
+
+        # Adiciona email aos extra_fields
+        extra_fields['email'] = email
 
         return self.create_user(username, password, **extra_fields)
+
+
+class CooperatedUserManager(models.Manager):
+    """Manager específico para usuários cooperados (para a interface gráfica)."""
+
+    def get_queryset(self):
+        """Retorna apenas usuários cooperados ativos por padrão."""
+        return super().get_queryset().filter(is_cooperated=True, is_active=True)
+
+
+class ActiveUserManager(models.Manager):
+    """Manager específico para usuários ativos (para a interface gráfica)."""
 
     def get_queryset(self):
         """Retorna apenas usuários ativos por padrão."""
         return super().get_queryset().filter(is_active=True)
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     """
     Modelo de usuário customizado para o CoopApp.
     Representa tanto administradores quanto cooperados do sistema.
     """
-
-    class Role(models.TextChoices):
-        ADMIN = 'ADMIN', 'Administrador'
-        COOPERATED = 'COOPERATED', 'Cooperado'
-
-    # Campos principais
-    id = models.BigAutoField(
-        primary_key=True,
-        editable=False,
-        verbose_name='ID'
-    )
 
     username = models.CharField(
         'Nome de usuário',
@@ -100,19 +119,21 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
         null=True,
         unique=True,
-        help_text='Email opcional, usado principalmente por administradores',
+        help_text='Email obrigatório para administradores',
     )
 
     full_name = models.CharField(
-        'Nome completo', max_length=255, help_text='Nome completo do usuário'
+        'Nome completo', max_length=255, blank=True, help_text='Nome completo do usuário'
     )
 
-    role = models.CharField(
-        'Papel',
-        max_length=20,
-        choices=Role.choices,
-        default=Role.COOPERATED,
-        help_text='Papel do usuário no sistema',
+    is_admin = models.BooleanField(
+        'Administrador', default=False, help_text='Usuário com permissões administrativas'
+    )
+
+    is_cooperated = models.BooleanField(
+        'Cooperado',
+        default=True,
+        help_text='Usuário participante das operações da cooperativa',
     )
 
     groups = models.ManyToManyField(
@@ -161,12 +182,23 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text='Administrador que realizou o cadastro',
     )
 
+    updated_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_users',
+        verbose_name='Atualizado por',
+        help_text='Administrador que realizou a última atualização',
+    )
+
     # Configurações do Django
     objects = UserManager()
-    all_objects = models.Manager()
+    active = ActiveUserManager()
+    cooperated = CooperatedUserManager()
 
     USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['full_name']
+    REQUIRED_FIELDS = []
 
     class Meta:
         verbose_name = 'Usuário'
@@ -183,33 +215,24 @@ class User(AbstractBaseUser, PermissionsMixin):
         super().clean()
 
         # Validações de role vs created_by
-        if (
-            self.role == self.Role.ADMIN
-            and self.created_by
-            and self.created_by.role != self.Role.ADMIN
-        ):
+        if self.is_admin and self.created_by and not self.created_by.is_admin:
             raise ValidationError(
                 {'created_by': 'Apenas administradores podem criar outros administradores'}
             )
 
         # Email obrigatório para admins
-        if self.role == self.Role.ADMIN and not self.email:
+        if self.is_admin and not self.email:
             raise ValidationError({'email': 'Email é obrigatório para administradores'})
+
+        # Nome completo obrigatório (menos para superuser)
+        if not self.is_superuser and not self.full_name:
+            raise ValidationError({'full_name': 'Nome completo é obrigatório'})
 
     def save(self, *args, **kwargs):
         """Override do save para executar validações."""
-        self.full_clean()
+        if not getattr(self, 'is_superuser', False):
+            self.full_clean()
         super().save(*args, **kwargs)
-
-    @property
-    def is_admin(self):
-        """Verifica se é administrador."""
-        return self.role == self.Role.ADMIN
-
-    @property
-    def is_cooperated(self):
-        """Verifica se é cooperado."""
-        return self.role == self.Role.COOPERATED
 
     def deactivate(self):
         """Desativa o usuário."""
