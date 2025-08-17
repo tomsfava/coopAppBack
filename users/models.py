@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from common.models import Region
+
 
 class UserManager(BaseUserManager):
     """
@@ -91,12 +93,12 @@ class CooperatedUserManager(models.Manager):
         return super().get_queryset().filter(is_cooperated=True, is_active=True)
 
 
-class ActiveUserManager(models.Manager):
-    """Manager específico para usuários ativos (para a interface gráfica)."""
+class AdminUserManager(models.Manager):
+    """Manager específico para usuários Admin ativos (para a interface gráfica)."""
 
     def get_queryset(self):
         """Retorna apenas usuários ativos por padrão."""
-        return super().get_queryset().filter(is_active=True)
+        return super().get_queryset().filter(is_admin=True, is_active=True)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -113,6 +115,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
 
     password = models.CharField('Senha', max_length=128, help_text='Senha criptografada')
+
+    region = models.ForeignKey(
+        Region, on_delete=models.SET_NULL, null=True, blank=True, default=None
+    )
 
     email = models.EmailField(
         'Email',
@@ -194,7 +200,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # Configurações do Django
     objects = UserManager()
-    active = ActiveUserManager()
+    admin = AdminUserManager()
     cooperated = CooperatedUserManager()
 
     USERNAME_FIELD = 'username'

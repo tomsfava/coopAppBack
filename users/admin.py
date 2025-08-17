@@ -19,6 +19,7 @@ class UserAdmin(BaseUserAdmin):
         'username',
         'full_name',
         'email',
+        'region',
         'is_admin',
         'is_cooperated',
         'is_active',
@@ -34,16 +35,17 @@ class UserAdmin(BaseUserAdmin):
         'is_superuser',
         'is_admin',
         'is_cooperated',
+        'region',
         'date_joined',
     )
 
     # Campos que podem ser usados para pesquisa
-    search_fields = ('username', 'full_name', 'email')
+    search_fields = ('username', 'full_name', 'email', 'region__name')
 
     # Campos de formulário para adição e edição de usuários
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        ('Informações Pessoais', {'fields': ('full_name', 'email')}),
+        ('Informações Pessoais', {'fields': ('full_name', 'email', 'region')}),
         (
             'Permissões',
             {
@@ -59,7 +61,13 @@ class UserAdmin(BaseUserAdmin):
     )
 
     # Campos somente para leitura na interface de edição
-    readonly_fields = ('last_login', 'date_joined', 'updated_at')
+    readonly_fields = (
+        'last_login',
+        'date_joined',
+        'updated_at',
+        'created_by',
+        'updated_by',
+    )
 
     # Campos exibidos na tela de criação de usuário
     add_fieldsets = (
@@ -72,6 +80,7 @@ class UserAdmin(BaseUserAdmin):
                     'password',
                     'full_name',
                     'email',
+                    'region',
                     'is_admin',
                     'is_cooperated',
                 ),
