@@ -1,5 +1,6 @@
 from django.db import models
 
+from common.models import Region
 from users.models import User
 
 
@@ -10,6 +11,7 @@ class ActiveClientManager(models.Manager):
 
 class Client(models.Model):
     name = models.CharField(max_length=199, unique=True)
+    region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True)
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name='created_clients'
     )
