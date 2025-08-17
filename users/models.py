@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from common.models import Region
+
 
 class UserManager(BaseUserManager):
     """
@@ -113,6 +115,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
 
     password = models.CharField('Senha', max_length=128, help_text='Senha criptografada')
+
+    region = models.ForeignKey(
+        Region, on_delete=models.SET_NULL, null=True, blank=True, default=None
+    )
 
     email = models.EmailField(
         'Email',
