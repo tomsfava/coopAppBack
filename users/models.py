@@ -91,12 +91,12 @@ class CooperatedUserManager(models.Manager):
         return super().get_queryset().filter(is_cooperated=True, is_active=True)
 
 
-class ActiveUserManager(models.Manager):
-    """Manager específico para usuários ativos (para a interface gráfica)."""
+class AdminUserManager(models.Manager):
+    """Manager específico para usuários Admin ativos (para a interface gráfica)."""
 
     def get_queryset(self):
         """Retorna apenas usuários ativos por padrão."""
-        return super().get_queryset().filter(is_active=True)
+        return super().get_queryset().filter(is_admin=True, is_active=True)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -194,7 +194,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # Configurações do Django
     objects = UserManager()
-    active = ActiveUserManager()
+    admin = AdminUserManager()
     cooperated = CooperatedUserManager()
 
     USERNAME_FIELD = 'username'
