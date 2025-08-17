@@ -15,6 +15,10 @@ class Unit(models.Model):
     def __str__(self):
         return f'{self.name} ({self.symbol})'
 
+    class Meta:
+        verbose_name = 'Unidade'
+        verbose_name_plural = 'Unidades'
+
 
 class Product(models.Model):
     name = models.CharField(max_length=125, null=False)
@@ -36,6 +40,12 @@ class Product(models.Model):
 
     objects = models.Manager()
     active_objects = ActiveProductManager()
+
+    def save(self, *args, **kwargs):
+        if self.unit and self.unit.symbol:
+            self.name = f'{self.name} ({self.unit.symbol})'
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
