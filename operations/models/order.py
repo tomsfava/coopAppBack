@@ -38,6 +38,8 @@ class OrderQuerySet(models.QuerySet):
 
 
 class Order(models.Model):
+    """Modelo de Pedidos cadastrados pelos Admin de acordo com pedido de Clientes."""
+
     class OrderStatus(models.TextChoices):
         OPEN = 'OPEN', 'Aberto'
         PARTIAL = 'PARTIAL', 'Parcialmente Distribuído'
@@ -63,7 +65,7 @@ class Order(models.Model):
     )
 
     notes = models.TextField(null=True, blank=True)
-
+    # Audit fields
     created_by = models.ForeignKey(
         User, on_delete=models.PROTECT, null=True, related_name='created_orders'
     )
