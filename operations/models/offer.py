@@ -6,7 +6,8 @@ from users.models import User
 
 
 class OfferQuerySet(models.QuerySet):
-    def available_for_distribution(self):
+    def distribution_priority(self):
+        """Ofertas prioritárias para distribuição."""
         return self.filter(
             status__in=[
                 Offer.OfferStatus.NOT_ALLOCATED,
@@ -15,9 +16,11 @@ class OfferQuerySet(models.QuerySet):
         )
 
     def fully_allocated(self):
+        """Ofertas totalmente distribuídas."""
         return self.filter(status=Offer.OfferStatus.ALLOCATED)
 
     def active(self):
+        """Ofertas ativas que podem ser usadas na distribuição."""
         return self.filter(
             status__in=[
                 Offer.OfferStatus.NOT_ALLOCATED,
@@ -34,11 +37,13 @@ class OfferQuerySet(models.QuerySet):
 
 
 class Offer(models.Model):
+    """Modelo de ofertas cadastradas por Admins para os cooperados."""
+
     class OfferStatus(models.TextChoices):
         NOT_ALLOCATED = 'NOT_ALLOCATED', 'Disponível'
         PARTIALLY_ALLOCATED = 'PARTIALLY_ALLOCATED', 'Parcialmente distribuída'
         ALLOCATED = 'ALLOCATED', 'Totalmente Distribuída'
-        FULFILLED = 'FULFILLED', 'Cumprida'
+        DELIVERED = 'DELIVERED', 'Entregue'
         CANCELLED = 'CANCELLED', 'Cancelada'
 
     product = models.ForeignKey(
