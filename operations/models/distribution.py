@@ -63,12 +63,21 @@ class Distribution(models.Model):
     source = models.CharField(
         max_length=10, choices=DistributionSource.choices, default=DistributionSource.AUTO
     )
+    notes = models.TextField(null=True, blank=True)
     created_by = models.ForeignKey(
-        User, on_delete=models.PROTECT, null=True, related_name='created_distributions'
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='created_distributions',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_by = models.ForeignKey(
-        User, on_delete=models.PROTECT, null=True, related_name='updated_distributions'
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='updated_distributions',
     )
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -81,33 +90,58 @@ class Distribution(models.Model):
             models.UniqueConstraint(fields=['order', 'offer'], name='order_offer_unique')
         ]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_quantity = self.quantity or 0
+
     def __str__(self):
         return (
-            f'Distribuição #{self.pk}:Pd:{self.order_id}-Of:{self.offer_id}-{self.quantity}'
+            f'Distribuição de {self.quantity} {self.offer.product.name} '
+            f'do cooperado {self.offer.cooperated.full_name} '
+            f'para o pedido #{self.order.id} '
         )
 
     def clean(self):
         super().clean()
+        # Produtos devem ser iguais
         if self.order.product != self.offer.product:
-            raise ValidationError('O pedido e oferta devem ser do mesmo produto.')
+            raise ValidationError('O pedido e a oferta devem ser do mesmo produto.')
+        # Quantidade deve ser positiva
         if self.quantity <= 0:
             raise ValidationError('A quantidade deve ser maior que zero.')
-        if self.quantity > self.offer.quantity:
-            raise ValidationError('A distribuição nao pode ser maior que a oferta.')
-        if self.quantity > self.order.quantity:
-            raise ValidationError('A distribuição nao pode ser maior que o pedido.')
-        if self.order.status == Order.OrderStatus.CANCELLED:
-            raise ValidationError('O pedido foi cancelado.')
+        # Verifica se excede o limite do pedido
+        if (
+            self.order.allocated_quantity - self._original_quantity + self.quantity
+        ) > self.order.quantity:
+            raise ValidationError('A soma das distribuições excede a quantidade do pedido.')
+        # Verifica se excede o limite da oferta
+        if (
+            self.offer.allocated_quantity - self._original_quantity + self.quantity
+        ) > self.offer.quantity:
+            raise ValidationError('A soma das distribuições excede a quantidade da oferta.')
+        # Status inválidos para distribuir
         if self.order.status in [
+            Order.OrderStatus.CANCELLED,
             Order.OrderStatus.CLOSED_PARTIAL,
             Order.OrderStatus.CLOSED_FILLED,
         ]:
-            raise ValidationError('O pedido foi encerrado.')
-        if self.offer.status == Offer.OfferStatus.CANCELLED:
-            raise ValidationError('A oferta foi cancelada.')
-        if self.offer.status == Offer.OfferStatus.DELIVERED:
-            raise ValidationError('A oferta foi entregue.')
+            raise ValidationError(
+                'Não é possível distribuir em pedidos cancelados ou encerrados.'
+            )
+        if self.offer.status in [
+            Offer.OfferStatus.CANCELLED,
+            Offer.OfferStatus.DELIVERED,
+        ]:
+            raise ValidationError(
+                'Não é possível distribuir a partir de ofertas canceladas ou entregues.'
+            )
 
     @property
     def cooperated(self):
         return self.offer.cooperated
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        instance._original_quantity = instance.quantity
+        return instance

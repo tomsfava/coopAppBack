@@ -67,13 +67,13 @@ class Order(models.Model):
     notes = models.TextField(null=True, blank=True)
     # Audit fields
     created_by = models.ForeignKey(
-        User, on_delete=models.PROTECT, null=True, related_name='created_orders'
+        User, on_delete=models.PROTECT, null=True, blank=True, related_name='created_orders'
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     updated_by = models.ForeignKey(
-        User, on_delete=models.PROTECT, null=True, related_name='updated_orders'
+        User, on_delete=models.PROTECT, null=True, blank=True, related_name='updated_orders'
     )
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -106,3 +106,11 @@ class Order(models.Model):
     @property
     def days_to_delivery(self):
         return (self.delivery_date - timezone.now().date()).days
+
+    @property
+    def allocated_quantity(self):
+        return self.distributions.aggregate(total=models.Sum('quantity'))['total'] or 0
+
+    @property
+    def remaining_quantity(self):
+        return self.quantity - self.allocated_quantity

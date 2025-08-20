@@ -61,11 +61,11 @@ class Offer(models.Model):
     notes = models.TextField(null=True, blank=True)
     # Audit fields
     created_by = models.ForeignKey(
-        User, on_delete=models.PROTECT, null=True, related_name='created_offers'
+        User, on_delete=models.PROTECT, null=True, blank=True, related_name='created_offers'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_by = models.ForeignKey(
-        User, on_delete=models.PROTECT, null=True, related_name='updated_offers'
+        User, on_delete=models.PROTECT, null=True, blank=True, related_name='updated_offers'
     )
     updated_at = models.DateTimeField(auto_now=True)
 
