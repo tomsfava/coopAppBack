@@ -1,8 +1,6 @@
 from django.contrib import admin
 
-from .distribution import Distribution
-from .offer import Offer
-from .order import Order
+from .models import Distribution, Offer, Order
 
 
 class DistributionInline(admin.TabularInline):
@@ -34,6 +32,13 @@ class OrderAdmin(admin.ModelAdmin):
     autocomplete_fields = ('client', 'product', 'created_by', 'updated_by')
     readonly_fields = ('created_at', 'updated_at')
 
+    def save_model(self, request, obj, form, change):
+        if not change and not obj.created_by_id:
+            obj.created_by = request.user
+        if change:
+            obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+
 
 @admin.register(Offer)
 class OfferAdmin(admin.ModelAdmin):
@@ -54,11 +59,19 @@ class OfferAdmin(admin.ModelAdmin):
     autocomplete_fields = ('product', 'cooperated', 'created_by', 'updated_by')
     readonly_fields = ('created_at', 'updated_at')
 
+    def save_model(self, request, obj, form, change):
+        if not change and not obj.created_by_id:
+            obj.created_by = request.user
+        if change:
+            obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+
 
 @admin.register(Distribution)
 class DistributionAdmin(admin.ModelAdmin):
     list_display = (
         'id',
+        'as_str',
         'order',
         'offer',
         'quantity',
@@ -77,3 +90,15 @@ class DistributionAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ('order', 'offer', 'created_by', 'updated_by')
     readonly_fields = ('created_at', 'updated_at')
+
+    def as_str(self, obj):
+        return str(obj)
+
+    as_str.short_description = 'resumo'
+
+    def save_model(self, request, obj, form, change):
+        if not change and not obj.created_by_id:
+            obj.created_by = request.user
+        if change:
+            obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
