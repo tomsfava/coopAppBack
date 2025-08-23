@@ -84,3 +84,11 @@ class Offer(models.Model):
             raise ValidationError('A quantidade deve ser maior que zero.')
         if self.end_date < self.start_date:
             raise ValidationError('A data final deve ser posterior à inicial')
+
+    @property
+    def allocated_quantity(self):
+        return self.distributions.aggregate(total=models.Sum('quantity'))['total'] or 0
+
+    @property
+    def remaining_quantity(self):
+        return self.quantity - self.allocated_quantity
