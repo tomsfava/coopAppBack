@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from operations.models import Order
@@ -28,6 +31,24 @@ class Sell(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     objects = SellQuerySet.as_manager()
 
+    class Meta:
+        verbose_name = 'Venda'
+        verbose_name_plural = 'Vendas'
+        constraints = [models.UniqueConstraint(fields=['order'], name='order_unique')]
+
     def __str__(self):
-        return f'{self.quantity_delivered}{self.order.product.name}'
-        f'entregue para {self.order.client.name}'
+        return (
+            f'{self.quantity_delivered}{self.order.product.name}'
+            f'entregue para {self.order.client.name}'
+        )
+
+    def clean(self):
+        super().clean()
+        if self.quantity_delivered <= 0:
+            raise ValidationError('A quantidade entregue deve ser maior que zero.')
+
+        ordered_quantity = self.order.quantity
+        if self.quantity_delivered < ordered_quantity:
+            self.missing_quantity = ordered_quantity - self.quantity_delivered
+        else:
+            self.missing_quantity = Decimal(0)
