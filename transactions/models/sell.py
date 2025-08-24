@@ -47,6 +47,11 @@ class Sell(models.Model):
         if self.quantity_delivered <= 0:
             raise ValidationError('A quantidade entregue deve ser maior que zero.')
 
+        if self.quantity_delivered > self.order.quantity:
+            raise ValidationError(
+                'A quantidade entregue deve ser menor ou igual ao pedido.'
+            )
+
         ordered_quantity = self.order.quantity
         if self.quantity_delivered < ordered_quantity:
             self.missing_quantity = ordered_quantity - self.quantity_delivered

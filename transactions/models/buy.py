@@ -33,7 +33,9 @@ class Buy(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True
     )
     unity_price = models.DecimalField(max_digits=10, decimal_places=2, null=False)
-    total_value = models.DecimalField(max_digits=10, decimal_places=2, null=False)
+    total_value = models.DecimalField(
+        max_digits=10, decimal_places=2, null=False, blank=True
+    )
     delivery_date = models.DateField(null=False)
     created_by = models.ForeignKey(
         User, on_delete=models.PROTECT, null=True, blank=True, related_name='created_buys'
