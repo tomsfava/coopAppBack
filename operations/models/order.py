@@ -58,6 +58,12 @@ class Order(models.Model):
 
     quantity = models.DecimalField(max_digits=10, decimal_places=2, null=False)
 
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=False)
+
+    total_value = models.DecimalField(
+        max_digits=10, decimal_places=2, null=False, blank=True, editable=False
+    )
+
     delivery_date = models.DateField(null=False)
 
     status = models.CharField(
@@ -95,6 +101,11 @@ class Order(models.Model):
 
         if self.delivery_date < timezone.now().date():
             raise ValidationError('A data de entrega deve ser no futuro.')
+
+        if self.unit_price <= 0:
+            raise ValidationError('O valor unitário deve ser maior que zero.')
+
+        self.total_value = self.quantity * self.unit_price
 
     @property
     def is_closed(self):
